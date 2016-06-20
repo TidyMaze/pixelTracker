@@ -200,10 +200,10 @@ function samplePixel(cache,imageData,x,y,width,height,radius){
     console.log(x + ',' + y + ',' + radius + ',' + JSON.stringify(tPixel));
   }
 
-  tPixel.r = Math.round(tPixel.r / nb);
-  tPixel.g = Math.round(tPixel.g / nb);
-  tPixel.b = Math.round(tPixel.b / nb);
-  tPixel.a = Math.round(tPixel.a / nb);
+  tPixel.r /= nb;
+  tPixel.g /= nb;
+  tPixel.b /= nb;
+  tPixel.a /= nb;
   return tPixel;
 }
 
@@ -220,7 +220,7 @@ function diffPixel(p1,p2){
   var sum = 0;
   var composantes = [x=>x.r,x=>x.g,x=>x.b,x=>x.a];
   composantes.forEach(f=>{
-    sum += Math.pow(Math.abs(f(p1)-f(p2)),2);
+    sum += Math.pow(f(p1)-f(p2),2);
   });
   return sum;
 }
