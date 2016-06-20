@@ -58,9 +58,9 @@ $(()=>{
     if(!mouseIsDown) return;
 
     var radius = 10;
-    var sampleRadius = 1;
+    var sampleRadius = 2;
     var nb = 6;
-    var lookupRadius = 40;
+    var lookupRadius = 50;
     var mousePos = getMousePos(c, evt);
     var pixel = samplePixel(cache[0].pixel,imageData,mousePos.x,mousePos.y,c.width,c.height,radius);
     ctx.drawImage(img,0,0);
@@ -142,8 +142,8 @@ function generateCircleCoordinates(x,y,radius,nb){
   for(var i=0;i<nb;i++){
     var angle = i*360/nb;
     res.push({
-      x:x+Math.cos(toRadians(angle))*radius,
-      y:y+Math.sin(toRadians(angle))*radius
+      x:Math.round(x+Math.cos(toRadians(angle))*radius),
+      y:Math.round(y+Math.sin(toRadians(angle))*radius)
     });
   }
 
@@ -195,10 +195,15 @@ function samplePixel(cache,imageData,x,y,width,height,radius){
       tPixel = addPixel(tPixel,curPixel);
     }
   }
-  tPixel.r /= nb;
-  tPixel.g /= nb;
-  tPixel.b /= nb;
-  tPixel.a /= nb;
+
+  if(tPixel.r == null || tPixel.g == null || tPixel.b == null || tPixel.a == null || nb == 0){
+    console.log(x + ',' + y + ',' + radius + ',' + JSON.stringify(tPixel));
+  }
+
+  tPixel.r = Math.round(tPixel.r / nb);
+  tPixel.g = Math.round(tPixel.g / nb);
+  tPixel.b = Math.round(tPixel.b / nb);
+  tPixel.a = Math.round(tPixel.a / nb);
   return tPixel;
 }
 
