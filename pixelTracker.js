@@ -45,9 +45,20 @@ $(()=>{
     };
   }
 
-  c.addEventListener('click', function(evt) {
+  var mouseIsDown = false;
+
+  c.onmousedown = function(e){
+      mouseIsDown = true;
+  }
+  c.onmouseup = function(e){
+      mouseIsDown = false;
+  }
+
+  c.addEventListener('mousemove', function(evt) {
+    if(!mouseIsDown) return;
+
     var radius = 10;
-    var sampleRadius = 3;
+    var sampleRadius = 1;
     var nb = 6;
     var lookupRadius = 40;
     var mousePos = getMousePos(c, evt);
@@ -98,7 +109,6 @@ $(()=>{
 
     var message = mousePos.x + ',' + mousePos.y + ' : analysed : '+countAnalysed + ', clone : ' + JSON.stringify(clone) + JSON.stringify(allSampled);
     writeConsole(message);
-    writeConsole(JSON.stringify(coords));
   }, false);
 });
 
