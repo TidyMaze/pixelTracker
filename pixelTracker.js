@@ -9,6 +9,14 @@ $(()=>{
   ctx2.imageSmoothingEnabled = false;
   ctx2.strokeStyle = '#ff0000';
 
+  var cache = [{
+      analyse:[],
+      pixel:[]
+    },{
+      analyse:[],
+      pixel:[]
+    }];
+
   var img = new Image();
   img.onload = ()=>{
     ctx.drawImage(img,0,0);
@@ -35,23 +43,23 @@ $(()=>{
 
   c.addEventListener('mousemove', function(evt) {
     var radius = 10;
-    var sampleRadius = 2;
+    var sampleRadius = 3;
     var nb = 6;
     var lookupRadius = 40;
     var mousePos = getMousePos(c, evt);
-    var pixel = samplePixel(ctx,mousePos.x,mousePos.y,radius);
+    var pixel = samplePixel(cache[0].pixel,ctx,mousePos.x,mousePos.y,radius);
     ctx.drawImage(img,0,0);
     ctx2.drawImage(img2,0,0);
 
     var coords = generateCircleCoordinates(mousePos.x,mousePos.y,radius,nb);
-    var allSampled = analysePixel(ctx,mousePos.x,mousePos.y,radius,nb,sampleRadius);
+    var allSampled = cachedAnalysePixel(cache[0],ctx,mousePos.x,mousePos.y,radius,nb,sampleRadius);
 
     var analyse = [];
 
     var countAnalysed = 0;
     for(var i = mousePos.y - lookupRadius;i<mousePos.y + lookupRadius;i++){
       for(var j = mousePos.x - lookupRadius;j<mousePos.x + lookupRadius;j++){
-        var resAnalyse = analysePixel(ctx2,j,i,radius,nb,sampleRadius);
+        var resAnalyse = cachedAnalysePixel(cache[1],ctx2,j,i,radius,nb,sampleRadius);
         analyse.push({
           x:j,
           y:i,
@@ -88,11 +96,22 @@ $(()=>{
   }, false);
 });
 
-function analysePixel(ctx,x,y,radius,nb,sampleRadius){
+function cachedAnalysePixel(cache,ctx,x,y,radius,nb,sampleRadius){
+  var inCache = cache.analyse[x+'|'+y+'|'+radius+'|'+nb+'|'+sampleRadius];
+  if(inCache){
+    return inCache;
+  } else {
+    var pixel = analysePixel(cache.pixel,ctx,x,y,radius,nb,sampleRadius);
+    cache.analyse[x+'|'+y+'|'+radius+'|'+nb+'|'+sampleRadius] = pixel;
+    return pixel;
+  }
+}
+
+function analysePixel(cache,ctx,x,y,radius,nb,sampleRadius){
   var coords = generateCircleCoordinates(x,y,radius,nb);
   var allSampled = [];
   coords.forEach(c => {
-    allSampled.push(samplePixel(ctx,c.x,c.y,sampleRadius));
+    allSampled.push(samplePixel(cache,ctx,c.x,c.y,sampleRadius));
   });
   return allSampled;
 }
@@ -119,6 +138,23 @@ function toRadians(angle){
   return angle * Math.PI / 180;
 }
 
+function buildKey(x,y){
+  return x+'|'+y;
+}
+
+function cachedGetPixel(cache,ctx,x,y){
+  var key = buildKey(x,y);
+  var inCache = cache[key];
+  if(inCache){
+    return inCache;
+  } else {
+
+    var pixel = getPixel(ctx,x,y);
+    cache[key] = pixel;
+    return pixel;
+  }
+}
+
 function getPixel(ctx,x,y){
   var data = ctx.getImageData(x, y, 1, 1).data;
   return {
@@ -129,13 +165,13 @@ function getPixel(ctx,x,y){
   };
 }
 
-function samplePixel(ctx,x,y,radius){
+function samplePixel(cache,ctx,x,y,radius){
   var nb = 0;
   var tPixel = { r:0,g:0,b:0,a:0 };
   for(var i = y-radius;i<y+radius;i++){
     for(var j = x-radius;j<x+radius;j++){
       nb++;
-      var curPixel = getPixel(ctx,j,i);
+      var curPixel = cachedGetPixel(cache,ctx,j,i);
       tPixel = addPixel(tPixel,curPixel);
     }
   }
