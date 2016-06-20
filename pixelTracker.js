@@ -3,11 +3,13 @@ $(()=>{
   var ctx = c.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   ctx.strokeStyle = '#ff0000';
+  var imageData;
 
   var c2 = document.getElementById("myCanvas2");
   var ctx2 = c2.getContext("2d");
   ctx2.imageSmoothingEnabled = false;
   ctx2.strokeStyle = '#ff0000';
+  var imageData2;
 
   var cache = [{
       analyse:[],
@@ -20,12 +22,14 @@ $(()=>{
   var img = new Image();
   img.onload = ()=>{
     ctx.drawImage(img,0,0);
+    imageData = ctx.getImageData(0,0,c.width,c.height).data;
   };
   img.src = 'sample1.jpg';
 
   var img2 = new Image();
   img2.onload = ()=>{
     ctx2.drawImage(img2,0,0);
+    imageData2 = ctx2.getImageData(0,0,c2.width,c2.height).data;
   };
   img2.src = 'sample2.jpg';
 
@@ -41,25 +45,26 @@ $(()=>{
     };
   }
 
-  c.addEventListener('mousemove', function(evt) {
+  c.addEventListener('click', function(evt) {
     var radius = 10;
     var sampleRadius = 3;
     var nb = 6;
     var lookupRadius = 40;
     var mousePos = getMousePos(c, evt);
-    var pixel = samplePixel(cache[0].pixel,ctx,mousePos.x,mousePos.y,radius);
+    var pixel = samplePixel(cache[0].pixel,imageData,mousePos.x,mousePos.y,c.width,c.height,radius);
     ctx.drawImage(img,0,0);
     ctx2.drawImage(img2,0,0);
 
     var coords = generateCircleCoordinates(mousePos.x,mousePos.y,radius,nb);
-    var allSampled = cachedAnalysePixel(cache[0],ctx,mousePos.x,mousePos.y,radius,nb,sampleRadius);
+
+    var allSampled = cachedAnalysePixel(cache[0],imageData,mousePos.x,mousePos.y,c.width,c.height,radius,nb,sampleRadius);
 
     var analyse = [];
 
     var countAnalysed = 0;
     for(var i = mousePos.y - lookupRadius;i<mousePos.y + lookupRadius;i++){
       for(var j = mousePos.x - lookupRadius;j<mousePos.x + lookupRadius;j++){
-        var resAnalyse = cachedAnalysePixel(cache[1],ctx2,j,i,radius,nb,sampleRadius);
+        var resAnalyse = cachedAnalysePixel(cache[1],imageData2,j,i,c2.width,c2.height,radius,nb,sampleRadius);
         analyse.push({
           x:j,
           y:i,
@@ -93,25 +98,26 @@ $(()=>{
 
     var message = mousePos.x + ',' + mousePos.y + ' : analysed : '+countAnalysed + ', clone : ' + JSON.stringify(clone) + JSON.stringify(allSampled);
     writeConsole(message);
+    writeConsole(JSON.stringify(coords));
   }, false);
 });
 
-function cachedAnalysePixel(cache,ctx,x,y,radius,nb,sampleRadius){
+function cachedAnalysePixel(cache,imageData,x,y,width,height,radius,nb,sampleRadius){
   var inCache = cache.analyse[x+'|'+y+'|'+radius+'|'+nb+'|'+sampleRadius];
   if(inCache){
     return inCache;
   } else {
-    var pixel = analysePixel(cache.pixel,ctx,x,y,radius,nb,sampleRadius);
+    var pixel = analysePixel(cache.pixel,imageData,x,y,width,height,radius,nb,sampleRadius);
     cache.analyse[x+'|'+y+'|'+radius+'|'+nb+'|'+sampleRadius] = pixel;
     return pixel;
   }
 }
 
-function analysePixel(cache,ctx,x,y,radius,nb,sampleRadius){
+function analysePixel(cache,imageData,x,y,width,height,radius,nb,sampleRadius){
   var coords = generateCircleCoordinates(x,y,radius,nb);
   var allSampled = [];
   coords.forEach(c => {
-    allSampled.push(samplePixel(cache,ctx,c.x,c.y,sampleRadius));
+    allSampled.push(samplePixel(cache,imageData,c.x,c.y,width,height,sampleRadius));
   });
   return allSampled;
 }
@@ -138,40 +144,44 @@ function toRadians(angle){
   return angle * Math.PI / 180;
 }
 
-function buildKey(x,y){
-  return x+'|'+y;
-}
-
-function cachedGetPixel(cache,ctx,x,y){
-  var key = buildKey(x,y);
+function cachedGetPixel(cache,imageData,x,y,width,height){
+  var key = y*width+x;
   var inCache = cache[key];
   if(inCache){
     return inCache;
   } else {
-
-    var pixel = getPixel(ctx,x,y);
+    var pixel = getPixel(imageData,x,y,width,height);
     cache[key] = pixel;
     return pixel;
   }
 }
 
-function getPixel(ctx,x,y){
-  var data = ctx.getImageData(x, y, 1, 1).data;
+function getPixel(imageData,x,y,width,height){
+  if(x<0||y<0||x>=width||y>=height){
+    return {
+      r:0,
+      g:0,
+      b:0,
+      a:0
+    };
+  }
+
+  var index = (y*width+x)*4
   return {
-    r:data[0],
-    g:data[1],
-    b:data[2],
-    a:data[3]
+    r:imageData[index],
+    g:imageData[index+1],
+    b:imageData[index+2],
+    a:imageData[index+3]
   };
 }
 
-function samplePixel(cache,ctx,x,y,radius){
+function samplePixel(cache,imageData,x,y,width,height,radius){
   var nb = 0;
   var tPixel = { r:0,g:0,b:0,a:0 };
   for(var i = y-radius;i<y+radius;i++){
     for(var j = x-radius;j<x+radius;j++){
       nb++;
-      var curPixel = cachedGetPixel(cache,ctx,j,i);
+      var curPixel = cachedGetPixel(cache,imageData,j,i,width,height);
       tPixel = addPixel(tPixel,curPixel);
     }
   }
@@ -203,7 +213,10 @@ function diffPixel(p1,p2){
 function diffSamples(s1,s2){
   var sum = 0;
   for(var i=0;i<s1.length;i++){
-    sum += diffPixel(s1[i],s2[i]);
+    var diff = diffPixel(s1[i],s2[i]);
+    if(diff){
+      sum += diff;
+    }
   }
   return sum;
 }
