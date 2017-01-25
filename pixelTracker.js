@@ -24,14 +24,14 @@ $(()=>{
     ctx.drawImage(img,0,0);
     imageData = ctx.getImageData(0,0,c.width,c.height).data;
   };
-  img.src = 'sample1.jpg';
+  img.src = 'sample1.png';
 
   var img2 = new Image();
   img2.onload = ()=>{
     ctx2.drawImage(img2,0,0);
     imageData2 = ctx2.getImageData(0,0,c2.width,c2.height).data;
   };
-  img2.src = 'sample2.jpg';
+  img2.src = 'sample2.png';
 
   function writeConsole(text){
     $('#console').text(text);
@@ -60,7 +60,7 @@ $(()=>{
     var radius = 10;
     var sampleRadius = 2;
     var nb = 6;
-    var lookupRadius = 50;
+    var lookupRadius = 40;
     var mousePos = getMousePos(c, evt);
     var pixel = samplePixel(cache[0].pixel,imageData,mousePos.x,mousePos.y,c.width,c.height,radius);
     ctx.drawImage(img,0,0);
@@ -194,10 +194,6 @@ function samplePixel(cache,imageData,x,y,width,height,radius){
       var curPixel = cachedGetPixel(cache,imageData,j,i,width,height);
       tPixel = addPixel(tPixel,curPixel);
     }
-  }
-
-  if(tPixel.r == null || tPixel.g == null || tPixel.b == null || tPixel.a == null || nb == 0){
-    console.log(x + ',' + y + ',' + radius + ',' + JSON.stringify(tPixel));
   }
 
   tPixel.r /= nb;
